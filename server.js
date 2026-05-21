@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// 1. ADIM: SİTENİN GİRİŞ SAYFASI (HTML & CSS)
+// 1. ADIM: GİRİŞ SAYFASI
 app.get('/', (req, res) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || "127.0.0.1";
     const cleanIp = clientIp.replace(/[^0-9]/g, '');
@@ -31,7 +31,6 @@ app.get('/', (req, res) => {
                 .status { margin-top: 15px; font-weight: bold; font-size: 14px; }
             </style>
             <script>
-                // Tarayıcı hafızasında oturum varsa direkt görev paneline uçur kanka
                 if (localStorage.getItem('roblox_session')) { window.location.href = '/dashboard'; }
             </script>
         </head>
@@ -66,7 +65,6 @@ app.get('/', (req, res) => {
                         });
                         const data = await response.json();
                         if (data.success) {
-                            // Veritabanı yerine verileri tarayıcının kendi DataStore'una mühürlüyoruz kanka
                             localStorage.setItem('roblox_session', JSON.stringify({ username: username, userId: data.userId }));
                             window.location.href = '/dashboard';
                         } else {
@@ -80,7 +78,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. ADIM: REKLAM PANELLİ VE GÖREV SAYFASI (DASHBOARD)
+// 2. ADIM: GÖREV SAYFASI (DASHBOARD - TASARIM TAMAMEN YENİLENDİ HATASIZ)
 app.get('/dashboard', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -91,10 +89,10 @@ app.get('/dashboard', (req, res) => {
             <title>Robux Kazan - Görev Paneli</title>
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
-                .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 600px; }
+                .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 500px; }
                 h2 { color: #00fff0; margin: 0 0 10px 0; }
                 .balance-box { background: #22223b; padding: 15px; border-radius: 10px; font-size: 22px; font-weight: bold; color: #00ff00; margin: 15px 0; border: 1px solid #00ff00; }
-                .iframe-container { background: white; border-radius: 10px; overflow: hidden; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+                .task-box { background: #2e2e4f; padding: 30px; border-radius: 10px; margin-top: 20px; border: 2px dashed #ff007f; font-weight: bold; color: #ff007f; }
                 .logout-btn { background: #ff3333; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; font-weight: bold; }
             </style>
             <script>
@@ -106,9 +104,11 @@ app.get('/dashboard', (req, res) => {
                 <h2>Hoş Geldin, <span id="user-display" style="color: #00fff0;">Oyuncu</span>! 👋</h2>
                 <div class="balance-box">Bakiyeniz: <span id="balance-display">0</span> ROBUX 💰</div>
 
-                <div class="iframe-container">
-                    <!-- Alttaki YOUR_LOOTABLY_PLACEMENT_ID yazan yere ileride reklam firmasından alacağın ID gelecek kanka -->
-                    <iframe id="lootably-frame" src="" style="width:100%; height:600px; border:none;"></iframe>
+                <div class="task-box">
+                    📢 GÖREV SİSTEMİ ÇOK YAKINDA AKTİF OLACAK!
+                    <p style="font-size: 14px; color: #ccc; font-weight: normal; margin-top: 10px;">
+                        Lootably veya AdGem reklam anlaşmalarımız tamamlandığında, buraya tıkır tıkır yapabileceğiniz anket ve oyun görevleri yüklenecektir kanka. Takipte kalın!
+                    </p>
                 </div>
 
                 <button class="logout-btn" onclick="cikisYap()">Oturumu Kapat</button>
@@ -118,7 +118,6 @@ app.get('/dashboard', (req, res) => {
                 const session = JSON.parse(localStorage.getItem('roblox_session'));
                 if (session) {
                     document.getElementById('user-display').innerText = session.username;
-                    document.getElementById('lootably-frame').src = "https://lootably.com" + session.userId;
                 }
                 function cikisYap() { localStorage.removeItem('roblox_session'); window.location.href = '/'; }
             </script>
@@ -139,11 +138,10 @@ app.post('/api/hybrid-verify', async (req, res) => {
         }
         const robloxUserId = thumbRes.data.data.targetId;
 
-        // Loglara kaydedip geçiyoruz, nebd olmadığı için veritabanı yükü yok kanka
         console.log(`[GİRİŞ ONAYI] Kullanıcı: ${username} | ID: ${robloxUserId} | IP: ${clientIp}`);
         return res.json({ success: true, userId: robloxUserId });
     } catch (error) {
-        return res.json({ success: true, userId: 12345 }); // Hata payı bypass'ı kanka
+        return res.json({ success: true, userId: 12345 });
     }
 });
 
