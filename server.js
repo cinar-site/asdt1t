@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// SİTENİN ANA SAYFASI
+// SİTENİN ANA SAYFASI (KULLANICI ADI ONAYLI SİSTEM)
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -73,11 +73,11 @@ app.get('/', (req, res) => {
         <body>
             <div class="container">
                 <h2>Robux Kazanma Paneli</h2>
-                <p style="color: #aaa; font-size: 14px;">Roblox ID ile Güvenli Giriş</p>
+                <p style="color: #aaa; font-size: 14px;">Roblox Kullanıcı Adı ile Güvenli Giriş</p>
                 
                 <div id="login-step">
-                    <input type="text" id="userIdInput" placeholder="Roblox ID (Örn: 10418322305)">
-                    <button id="loginBtn" onclick="hesapKontrolEt()">Giriş Yap</button>
+                    <input type="text" id="usernameInput" placeholder="Roblox Kullanıcı Adı">
+                    <button id="loginBtn" onclick="isimKontrolEt()">Giriş Yap</button>
                 </div>
 
                 <div id="verify-step" class="code-box">
@@ -95,38 +95,39 @@ app.get('/', (req, res) => {
 
             <script>
                 let uretilenKod = "";
-                let girilenUserId = "";
+                let bulunanUserId = ""; // Arka plandan dönecek gerçek ID'yi burada saklayacağız kanka
 
-                async function hesapKontrolEt() {
-                    girilenUserId = document.getElementById('userIdInput').value.trim();
+                async function isimKontrolEt() {
+                    const username = document.getElementById('usernameInput').value.trim();
                     const statusMsg = document.getElementById('status-msg');
                     const loginBtn = document.getElementById('loginBtn');
                     
-                    if(!girilenUserId || isNaN(girilenUserId)) {
-                        alert("Lütfen geçerli bir sayısal Roblox ID girin!");
+                    if(!username) {
+                        alert("Lütfen Roblox kullanıcı adınızı girin!");
                         return;
                     }
                     
-                    statusMsg.innerText = "Profil kontrol ediliyor...";
+                    statusMsg.innerText = "Kullanıcı adı kontrol ediliyor...";
                     statusMsg.style.color = "#00fff0";
                     loginBtn.disabled = true;
 
                     try {
-                        const response = await fetch('/api/check-user', {
+                        const response = await fetch('/api/check-username', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: girilenUserId })
+                            body: JSON.stringify({ username: username })
                         });
 
                         const data = await response.json();
 
                         if (data.exists) {
+                            bulunanUserId = data.userId; // Bulunan ID'yi hafızaya alıyoruz
                             uretilenKod = "ROBUX-" + Math.floor(100000 + Math.random() * 900000);
                             
                             document.getElementById('generated-code').innerText = uretilenKod;
                             document.getElementById('login-step').style.display = 'none';
                             document.getElementById('verify-step').style.display = 'block';
-                            statusMsg.innerText = "Hesap onaylandı! Kod profilinize eklensin.";
+                            statusMsg.innerText = "Hesap doğrulandı! Kod profilinize eklensin.";
                             statusMsg.style.color = "#00ff00";
                         } else {
                             statusMsg.innerText = "Hata: " + data.message;
@@ -149,7 +150,7 @@ app.get('/', (req, res) => {
                         const response = await fetch('/api/verify-profile', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: girilenUserId, generatedCode: uretilenKod })
+                            body: JSON.stringify({ userId: bulunanUserId, generatedCode: uretilenKod })
                         });
 
                         const data = await response.json();
@@ -172,28 +173,32 @@ app.get('/', (req, res) => {
     `);
 });
 
-// DOĞRUDAN PROFİL URL'SİNİ KONTROL EDEN APİ (YENİLENDİ)
-app.post('/api/check-user', async (req, res) => {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ exists: false, message: "Eksik bilgi!" });
+// ROBLOX KULLANICI ADINDAN ID BULAN VE HESABI KONTROL EDEN GÜNCEL APİ
+app.post('/api/check-username', async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ exists: false, message: "Eksik bilgi!" });
 
     try {
-        // Doğrudan profil sayfasına istek atıyoruz kanka
-        const response = await axios.get(`https://roproxy.com{userId}`);
-        
-        // Eğer o ID'ye ait profil verisi başarıyla döndüyse hesap vardır
-        if (response.data && response.data.id) {
-            return res.json({ exists: true });
+        // Roblox kullanıcı adı arama servisine POST isteği atıyoruz kanka
+        const response = await axios.post('https://roproxy.com', {
+            usernames: [username],
+            excludeBannedUsers: false
+        });
+
+        // Eğer kullanıcı bulunduysa listelenen ilk elemanın verilerini çekiyoruz
+        if (response.data && response.data.data && response.data.data.length > 0) {
+            const robloxUser = response.data.data[0];
+            return res.json({ exists: true, userId: robloxUser.id }); // ID'yi ön yüze fırlatıyoruz kanka
         } else {
-            return res.json({ exists: false, message: "Böyle bir Roblox kullanıcısı bulunamadı!" });
+            return res.json({ exists: false, message: "Böyle bir Roblox kullanıcı adı bulunamadı!" });
         }
     } catch (error) {
-        // Eğer 404 hatası veya başka hata döndüyse hesap yok demektir
-        return res.json({ exists: false, message: "Girilen ID geçersiz veya böyle bir hesap yok!" });
+        console.error("Roblox API hatası:", error.message);
+        return res.json({ exists: false, message: "Kullanıcı adı doğrulanırken hata oluştu veya proxy yanıt vermedi." });
     }
 });
 
-// PROFİLDEKİ KODU KONTROL EDEN APİ
+// HAFIZADAKİ ID İLE PROFİLDEKİ KODU KONTROL EDEN APİ
 app.post('/api/verify-profile', async (req, res) => {
     const { userId, generatedCode } = req.body;
     if (!userId || !generatedCode) return res.status(400).json({ success: false, message: "Eksik bilgi!" });
@@ -205,10 +210,10 @@ app.post('/api/verify-profile', async (req, res) => {
         if (userDescription.includes(generatedCode)) {
             return res.json({ success: true });
         } else {
-            return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı!" });
+            return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı! Lütfen kodu tam yapıştırdığınızdan emin olun." });
         }
     } catch (error) {
-        return res.json({ success: false, message: "Profil açıklaması çekilemedi." });
+        return res.json({ success: false, message: "Profil açıklaması teyit edilemedi." });
     }
 });
 
