@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// SİTENİN ANA SAYFASI (YENİ TASARIM VE KOD ÜRETME SİSTEMİ)
+// SİTENİN ANA SAYFASI (HATASIZ GÜNCEL KOD)
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -97,17 +97,15 @@ app.get('/', (req, res) => {
                 let uretilenKod = "";
                 let girilenUserId = "";
 
-                // BUTONA BASILDIĞI AN ANLIK OLARAK KODU ÜRETEN FONKSİYON
-                functionam devamEt() {
+                // Yazım hatası düzeltildi kanka: functionam -> function
+                function devamEt() {
                     girilenUserId = document.getElementById('userIdInput').value.trim();
                     
-                    // Sadece sayılardan oluşup oluşmadığını kontrol ediyoruz
                     if(!girilenUserId || isNaN(girilenUserId)) {
                         alert("Lütfen geçerli bir sayısal Roblox ID girin!");
                         return;
                     }
                     
-                    // Kod anında tarayıcıda üretiliyor kanka
                     uretilenKod = "ROBUX-" + Math.floor(100000 + Math.random() * 900000);
                     
                     document.getElementById('generated-code').innerText = uretilenKod;
@@ -122,7 +120,6 @@ app.get('/', (req, res) => {
                     statusMsg.style.color = "#00fff0";
 
                     try {
-                        // Sunucuya doğrudan ID ve Kod verilerini gönderiyoruz
                         const response = await fetch('/api/verify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -158,17 +155,14 @@ app.post('/api/verify', async (req, res) => {
     }
 
     try {
-        // Roblox Proxy servisini kullanarak doğrudan ID sorguluyoruz kanka (Böyle bir hesap var mı kontrolü)
         const userProfileResponse = await axios.get(`https://roproxy.com{userId}`).catch(() => null);
         
-        // Eğer istek başarısız olduysa veya hesap bulunamadıysa uyarı fırlatıyoruz
         if (!userProfileResponse || !userProfileResponse.data) {
             return res.json({ success: false, message: "Bu ID'ye ait bir Roblox hesabı bulunamadı!" });
         }
 
         const userDescription = userProfileResponse.data.description || "";
 
-        // Profildeki 'Hakkımda' yazısında kodumuz geçiyor mu bakıyoruz
         if (userDescription.includes(generatedCode)) {
             return res.json({ success: true, message: "Doğrulama başarılı!" });
         } else {
