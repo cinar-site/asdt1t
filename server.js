@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// SİTENİN ANA SAYFASI (ÖNCE HESAP KONTROLÜ YAPIP SONRA KOD VEREN SİSTEM)
+// SİTENİN ANA SAYFASI
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -97,7 +97,6 @@ app.get('/', (req, res) => {
                 let uretilenKod = "";
                 let girilenUserId = "";
 
-                // 1. ADIM: BUTONA BASILDIĞINDA ÖNCE HESABIN VARLIĞINI KONTROL EDEN FONKSİYON
                 async function hesapKontrolEt() {
                     girilenUserId = document.getElementById('userIdInput').value.trim();
                     const statusMsg = document.getElementById('status-msg');
@@ -108,12 +107,11 @@ app.get('/', (req, res) => {
                         return;
                     }
                     
-                    statusMsg.innerText = "Roblox ID kontrol ediliyor...";
+                    statusMsg.innerText = "Profil kontrol ediliyor...";
                     statusMsg.style.color = "#00fff0";
                     loginBtn.disabled = true;
 
                     try {
-                        // Backend'e sadece hesabı kontrol etmesi için istek atıyoruz
                         const response = await fetch('/api/check-user', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -123,13 +121,12 @@ app.get('/', (req, res) => {
                         const data = await response.json();
 
                         if (data.exists) {
-                            // Hesap gerçekten varsa kod üretilip ekran değiştiriliyor kanka
                             uretilenKod = "ROBUX-" + Math.floor(100000 + Math.random() * 900000);
                             
                             document.getElementById('generated-code').innerText = uretilenKod;
                             document.getElementById('login-step').style.display = 'none';
                             document.getElementById('verify-step').style.display = 'block';
-                            statusMsg.innerText = "Hesap bulundu! Lütfen profilinizi doğrulayın.";
+                            statusMsg.innerText = "Hesap onaylandı! Kod profilinize eklensin.";
                             statusMsg.style.color = "#00ff00";
                         } else {
                             statusMsg.innerText = "Hata: " + data.message;
@@ -143,7 +140,6 @@ app.get('/', (req, res) => {
                     }
                 }
 
-                // 2. ADIM: KODU PROFİLE YAPIŞTIRDIKTAN SONRA ÇALIŞAN DOĞRULMA FONKSİYONU
                 async function profilOnayla() {
                     const statusMsg = document.getElementById('status-msg');
                     statusMsg.innerText = "Profil açıklaması kontrol ediliyor...";
@@ -176,38 +172,35 @@ app.get('/', (req, res) => {
     `);
 });
 
-// İLK AŞAMA: SADECE HESAP VAR MI KONTROLÜ YAPAN BACKEND APISI
+// DOĞRUDAN PROFİL URL'SİNİ KONTROL EDEN APİ (YENİLENDİ)
 app.post('/api/check-user', async (req, res) => {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ exists: false, message: "Eksik bilgi!" });
 
     try {
-        const userProfileResponse = await axios.get(`https://roproxy.com{userId}`).catch(() => null);
+        // Doğrudan profil sayfasına istek atıyoruz kanka
+        const response = await axios.get(`https://roproxy.com{userId}`);
         
-        if (!userProfileResponse || !userProfileResponse.data) {
-            return res.json({ exists: false, message: "Bu ID'ye ait geçerli bir Roblox hesabı bulunamadı!" });
+        // Eğer o ID'ye ait profil verisi başarıyla döndüyse hesap vardır
+        if (response.data && response.data.id) {
+            return res.json({ exists: true });
+        } else {
+            return res.json({ exists: false, message: "Böyle bir Roblox kullanıcısı bulunamadı!" });
         }
-
-        // Hesap varsa olumlu yanıt dönüyoruz kanka
-        return res.json({ exists: true });
-
     } catch (error) {
-        return res.status(500).json({ exists: false, message: "Roblox servisleri yanıt vermiyor." });
+        // Eğer 404 hatası veya başka hata döndüyse hesap yok demektir
+        return res.json({ exists: false, message: "Girilen ID geçersiz veya böyle bir hesap yok!" });
     }
 });
 
-// İKİNCİ AŞAMA: PROFİLDEKİ KODU KONTROL EDEN BACKEND APISI
+// PROFİLDEKİ KODU KONTROL EDEN APİ
 app.post('/api/verify-profile', async (req, res) => {
     const { userId, generatedCode } = req.body;
     if (!userId || !generatedCode) return res.status(400).json({ success: false, message: "Eksik bilgi!" });
 
     try {
-        const userProfileResponse = await axios.get(`https://roproxy.com{userId}`).catch(() => null);
-        if (!userProfileResponse || !userProfileResponse.data) {
-            return res.json({ success: false, message: "Hesap kontrol hatası!" });
-        }
-
-        const userDescription = userProfileResponse.data.description || "";
+        const response = await axios.get(`https://roproxy.com{userId}`);
+        const userDescription = response.data.description || "";
 
         if (userDescription.includes(generatedCode)) {
             return res.json({ success: true });
@@ -215,7 +208,7 @@ app.post('/api/verify-profile', async (req, res) => {
             return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı!" });
         }
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Roblox sunucu hatası." });
+        return res.json({ success: false, message: "Profil açıklaması çekilemedi." });
     }
 });
 
