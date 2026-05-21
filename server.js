@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// SİTENİN ANA SAYFASI (KULLANICI ADI ONAYLI SİSTEM)
+// SİTENİN ANA SAYFASI (HTML & CSS)
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -95,7 +95,7 @@ app.get('/', (req, res) => {
 
             <script>
                 let uretilenKod = "";
-                let bulunanUserId = ""; // Arka plandan dönecek gerçek ID'yi burada saklayacağız kanka
+                let bulunanUserId = "";
 
                 async function isimKontrolEt() {
                     const username = document.getElementById('usernameInput').value.trim();
@@ -121,7 +121,7 @@ app.get('/', (req, res) => {
                         const data = await response.json();
 
                         if (data.exists) {
-                            bulunanUserId = data.userId; // Bulunan ID'yi hafızaya alıyoruz
+                            bulunanUserId = data.userId;
                             uretilenKod = "ROBUX-" + Math.floor(100000 + Math.random() * 900000);
                             
                             document.getElementById('generated-code').innerText = uretilenKod;
@@ -173,47 +173,47 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ROBLOX KULLANICI ADINDAN ID BULAN VE HESABI KONTROL EDEN GÜNCEL APİ
+// ROBLOX KULLANICI ADI KONTROLÜ (GÜNCELLENMİŞ VE KARARLI HALE GETİRİLMİŞ API)
 app.post('/api/check-username', async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ exists: false, message: "Eksik bilgi!" });
 
     try {
-        // Roblox kullanıcı adı arama servisine POST isteği atıyoruz kanka
-        const response = await axios.post('https://roproxy.com', {
+        // Stabilizasyon için roproxy.net adresine yönlendirdik kanka
+        const response = await axios.post('https://roproxy.net', {
             usernames: [username],
             excludeBannedUsers: false
         });
 
-        // Eğer kullanıcı bulunduysa listelenen ilk elemanın verilerini çekiyoruz
+        // Gelen veri paketinin yapısını tamamen güvenli şekilde açıyoruz kanka
         if (response.data && response.data.data && response.data.data.length > 0) {
-            const robloxUser = response.data.data[0];
-            return res.json({ exists: true, userId: robloxUser.id }); // ID'yi ön yüze fırlatıyoruz kanka
+            const robloxUser = response.data.data[0]; // İlk eşleşen elemanı al
+            return res.json({ exists: true, userId: robloxUser.id }); // Eşleşen ID'yi fırlat
         } else {
             return res.json({ exists: false, message: "Böyle bir Roblox kullanıcı adı bulunamadı!" });
         }
     } catch (error) {
-        console.error("Roblox API hatası:", error.message);
-        return res.json({ exists: false, message: "Kullanıcı adı doğrulanırken hata oluştu veya proxy yanıt vermedi." });
+        console.error("Roblox API Hatası:", error.message);
+        return res.json({ exists: false, message: "Roblox sunucuları veya proxy şu an yoğun. Lütfen tekrar deneyin." });
     }
 });
 
-// HAFIZADAKİ ID İLE PROFİLDEKİ KODU KONTROL EDEN APİ
+// PROFİLDEKİ KODU KONTROL EDEN APİ
 app.post('/api/verify-profile', async (req, res) => {
     const { userId, generatedCode } = req.body;
     if (!userId || !generatedCode) return res.status(400).json({ success: false, message: "Eksik bilgi!" });
 
     try {
-        const response = await axios.get(`https://roproxy.com{userId}`);
+        const response = await axios.get(`https://roproxy.net{userId}`);
         const userDescription = response.data.description || "";
 
         if (userDescription.includes(generatedCode)) {
             return res.json({ success: true });
         } else {
-            return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı! Lütfen kodu tam yapıştırdığınızdan emin olun." });
+            return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı! Lütfen kodu tam kaydettiğinizden emin olun." });
         }
     } catch (error) {
-        return res.json({ success: false, message: "Profil açıklaması teyit edilemedi." });
+        return res.json({ success: false, message: "Profil açıklaması çekilirken hata oluştu." });
     }
 });
 
