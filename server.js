@@ -1,15 +1,10 @@
 const express = require('express');
 const axios = require('axios');
-const path = require('path'); // Klasör yollarını bulmak için gerekli kütüphane
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-
-// 🔥 PROJE KLASÖRÜNÜ DIŞARIYA AÇIYORUZ 🔥
-// Bu satır sayesinde klasörün içine attığın icon.ico dosyasını tarayıcı doğrudan okuyabilecek kanka
-app.use(express.static(path.join(__dirname)));
 
 // 1. ADIM: GİRİŞ SAYFASI
 app.get('/', (req, res) => {
@@ -25,10 +20,7 @@ app.get('/', (req, res) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Robux Kazan - Doğrulama Paneli</title>
-            
-            <!-- SECKEDE İKONUN GÖZÜKMESİ İÇİN KLASÖRDEKİ DOSYAYI BAĞLIYORUZ -->
             <link rel="icon" type="image/x-icon" href="/icon.ico">
-            
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
                 .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 360px; }
@@ -87,7 +79,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. ADIM: GÖREV SAYFASI (DASHBOARD)
+// 2. ADIM: REKLAM GÖREVLERİNİN YÜKLENECEĞİ SAYFA (DASHBOARD)
 app.get('/dashboard', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -96,16 +88,14 @@ app.get('/dashboard', (req, res) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Robux Kazan - Görev Paneli</title>
-            
-            <!-- BURAYA DA İKONU EKLEDİK KANKA -->
             <link rel="icon" type="image/x-icon" href="/icon.ico">
-            
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
-                .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 500px; }
+                .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 650px; }
                 h2 { color: #00fff0; margin: 0 0 10px 0; }
                 .balance-box { background: #22223b; padding: 15px; border-radius: 10px; font-size: 22px; font-weight: bold; color: #00ff00; margin: 15px 0; border: 1px solid #00ff00; }
-                .task-box { background: #2e2e4f; padding: 30px; border-radius: 10px; margin-top: 20px; border: 2px dashed #ff007f; font-weight: bold; color: #ff007f; }
+                .iframe-container { background: white; border-radius: 10px; overflow: hidden; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: none; }
+                .pending-box { background: #2e2e4f; padding: 30px; border-radius: 10px; margin-top: 20px; border: 2px dashed #ff007f; font-weight: bold; color: #ff007f; }
                 .logout-btn { background: #ff3333; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; font-weight: bold; }
             </style>
             <script>
@@ -117,11 +107,17 @@ app.get('/dashboard', (req, res) => {
                 <h2>Hoş Geldin, <span id="user-display" style="color: #00fff0;">Oyuncu</span>! 👋</h2>
                 <div class="balance-box">Bakiyeniz: <span id="balance-display">0</span> ROBUX 💰</div>
 
-                <div class="task-box">
-                    📢 GÖREV SİSTEMİ ÇOK YAKINDA AKTİF OLACAK!
+                <!-- ONAY BEKLERKEN GÖZÜKEN GEÇİCİ KUTU -->
+                <div id="pending-msg" class="pending-box">
+                    📢 GÖREV SİTEMİ MONLIX TARAFINDAN ONAYLIYOR!
                     <p style="font-size: 14px; color: #ccc; font-weight: normal; margin-top: 10px;">
-                        Lootably veya AdGem reklam anlaşmalarımız tamamlandığında, buraya tıkır tıkır yapabileceğiniz anket birikim görevleri yüklenecektir kanka.
+                        Monlix ekibi sitemizi birkaç saat içinde onayladığında, sana vereceğim linki buraya yapıştıracağız ve gerçek görev havuzu otomatik olarak burada belirecek kanka!
                     </p>
+                </div>
+
+                <!-- 🔥 MONLIX ONAYLANINCA OTOMATİK DEVREYE GİRECEK GÖREV DUVARI 🔥 -->
+                <div id="wall-container" class="iframe-container">
+                    <iframe id="monlix-frame" src="" style="width:100%; height:600px; border:none;"></iframe>
                 </div>
 
                 <button class="logout-btn" onclick="cikisYap()">Oturumu Kapat</button>
@@ -131,6 +127,16 @@ app.get('/dashboard', (req, res) => {
                 const session = JSON.parse(localStorage.getItem('roblox_session'));
                 if (session) {
                     document.getElementById('user-display').innerText = session.username;
+
+                    // 💡 BURAYA MONLIX ONAY MAİLİNDEKİ SANA VERİLEN GÖREV LİNKİNİ YAPIŞTIRACAKSIN kanka!
+                    // Link gelene kadar bu alt satır boş kalacak:
+                    const monlixUrl = ""; 
+
+                    if (monlixUrl !== "") {
+                        document.getElementById('pending-msg').style.display = 'none';
+                        document.getElementById('wall-container').style.display = 'block';
+                        document.getElementById('monlix-frame').src = monlixUrl + "?userId=" + session.userId;
+                    }
                 }
                 function cikisYap() { localStorage.removeItem('roblox_session'); window.location.href = '/'; }
             </script>
@@ -156,4 +162,4 @@ app.post('/api/hybrid-verify', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => { console.log(`Sunucu ${PORT} portunda canavar gibi çalışıyor.`); });
+app.listen(PORT, () => { console.log(`Sunucu ${PORT} portunda aktif.`); });
