@@ -1,10 +1,15 @@
 const express = require('express');
 const axios = require('axios');
+const path = require('path'); // Klasör yollarını bulmak için gerekli kütüphane
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// 🔥 PROJE KLASÖRÜNÜ DIŞARIYA AÇIYORUZ 🔥
+// Bu satır sayesinde klasörün içine attığın icon.ico dosyasını tarayıcı doğrudan okuyabilecek kanka
+app.use(express.static(path.join(__dirname)));
 
 // 1. ADIM: GİRİŞ SAYFASI
 app.get('/', (req, res) => {
@@ -20,6 +25,10 @@ app.get('/', (req, res) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Robux Kazan - Doğrulama Paneli</title>
+            
+            <!-- SECKEDE İKONUN GÖZÜKMESİ İÇİN KLASÖRDEKİ DOSYAYI BAĞLIYORUZ -->
+            <link rel="icon" type="image/x-icon" href="/icon.ico">
+            
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
                 .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 360px; }
@@ -78,7 +87,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. ADIM: GÖREV SAYFASI (DASHBOARD - TASARIM TAMAMEN YENİLENDİ HATASIZ)
+// 2. ADIM: GÖREV SAYFASI (DASHBOARD)
 app.get('/dashboard', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -87,6 +96,10 @@ app.get('/dashboard', (req, res) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Robux Kazan - Görev Paneli</title>
+            
+            <!-- BURAYA DA İKONU EKLEDİK KANKA -->
+            <link rel="icon" type="image/x-icon" href="/icon.ico">
+            
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
                 .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 500px; }
@@ -107,7 +120,7 @@ app.get('/dashboard', (req, res) => {
                 <div class="task-box">
                     📢 GÖREV SİSTEMİ ÇOK YAKINDA AKTİF OLACAK!
                     <p style="font-size: 14px; color: #ccc; font-weight: normal; margin-top: 10px;">
-                        Lootably veya AdGem reklam anlaşmalarımız tamamlandığında, buraya tıkır tıkır yapabileceğiniz anket ve oyun görevleri yüklenecektir kanka. Takipte kalın!
+                        Lootably veya AdGem reklam anlaşmalarımız tamamlandığında, buraya tıkır tıkır yapabileceğiniz anket birikim görevleri yüklenecektir kanka.
                     </p>
                 </div>
 
@@ -137,8 +150,6 @@ app.post('/api/hybrid-verify', async (req, res) => {
             return res.json({ success: false, message: "Böyle bir kullanıcı bulunamadı!" });
         }
         const robloxUserId = thumbRes.data.data.targetId;
-
-        console.log(`[GİRİŞ ONAYI] Kullanıcı: ${username} | ID: ${robloxUserId} | IP: ${clientIp}`);
         return res.json({ success: true, userId: robloxUserId });
     } catch (error) {
         return res.json({ success: true, userId: 12345 });
