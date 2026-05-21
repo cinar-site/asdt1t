@@ -6,8 +6,17 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// SİTENİN ANA SAYFASI (HTML & CSS)
+// SİTENİN ANA SAYFASI (GİRİŞSİZ, OTOMATİK IP BAZLI KOD ÜRETEN SİSTEM)
 app.get('/', (req, res) => {
+    // Render/Cloudflare arkasından kullanıcının gerçek IP'sini backend içinde çekiyoruz kanka
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || "127.0.0.1";
+    // IP adresindeki nokta ve iki nokta üst üste işaretlerini temizleyerek benzersiz bir sayısal tohum (seed) elde ediyoruz
+    const cleanIp = clientIp.replace(/[^0-9]/g, '');
+    const ipSeed = cleanIp ? parseInt(cleanIp.substring(0, 6)) : Math.floor(100000 + Math.random() * 900000);
+    
+    // Her IP'ye özel, o IP değişmedikçe hep sabit kalacak benzersiz doğrulama kodunu üretiyoruz kanka
+    const generatedCode = "ROBUX-IP-" + (100000 + (ipSeed % 900000));
+
     res.send(`
         <!DOCTYPE html>
         <html lang="tr">
@@ -35,17 +44,6 @@ app.get('/', (req, res) => {
                     width: 350px;
                 }
                 h2 { color: #00fff0; margin-bottom: 20px; }
-                input {
-                    width: 90%;
-                    padding: 12px;
-                    margin: 10px 0;
-                    border: none;
-                    border-radius: 8px;
-                    background-color: #2e2e4f;
-                    color: #fff;
-                    font-size: 16px;
-                    text-align: center;
-                }
                 button {
                     width: 96%;
                     padding: 12px;
@@ -60,7 +58,6 @@ app.get('/', (req, res) => {
                 }
                 button:hover { background-color: #00b8d4; }
                 .code-box {
-                    display: none;
                     background-color: #22223b;
                     padding: 15px;
                     margin-top: 15px;
@@ -68,102 +65,56 @@ app.get('/', (req, res) => {
                     border: 1px dashed #00fff0;
                 }
                 .status { margin-top: 15px; font-weight: bold; font-size: 14px; }
+                .ip-text { font-size: 11px; color: #555577; margin-top: 10px; }
             </style>
         </head>
         <body>
             <div class="container">
                 <h2>Robux Kazanma Paneli</h2>
-                <p style="color: #aaa; font-size: 14px;">Roblox Kullanıcı Adı ile Güvenli Giriş</p>
+                <p style="color: #aaa; font-size: 14px;">IP Adresiniz Tanımlandı</p>
                 
-                <div id="login-step">
-                    <input type="text" id="usernameInput" placeholder="Roblox Kullanıcı Adı">
-                    <button id="loginBtn" onclick="isimKontrolEt()">Giriş Yap</button>
-                </div>
-
-                <div id="verify-step" class="code-box">
+                <div class="code-box">
                     <p style="font-size: 13px; color: #ccc; text-align: left; margin-bottom: 15px;">
-                        1. Aşağıdaki kodu kopyalayın.<br>
+                        1. IP adresinize özel üretilen aşağıdaki kodu kopyalayın.<br>
                         2. Roblox profilinizdeki <b>Hakkımda (About)</b> kısmına yapıştırıp kaydedin.<br>
                         3. Ardından aşağıdaki butona basın.
                     </p>
-                    <h3 id="generated-code" style="color: #ff007f; letter-spacing: 2px; background: #1a1a2e; padding: 10px; border-radius: 5px;"></h3>
+                    <h3 id="generated-code" style="color: #ff007f; letter-spacing: 2px; background: #1a1a2e; padding: 10px; border-radius: 5px;">${generatedCode}</h3>
                     <button onclick="profilOnayla()" style="background-color: #ff007f; color: #fff;">Profilimi Onayla</button>
                 </div>
 
                 <div id="status-msg" class="status"></div>
+                <div class="ip-text">Sistemdeki IP Kimliğiniz: ${clientIp}</div>
             </div>
 
             <script>
-                let uretilenKod = "";
-                let bulunanUserId = "";
-
-                async function isimKontrolEt() {
-                    const username = document.getElementById('usernameInput').value.trim();
-                    const statusMsg = document.getElementById('status-msg');
-                    const loginBtn = document.getElementById('loginBtn');
-                    
-                    if(!username) {
-                        alert("Lütfen Roblox kullanıcı adınızı girin!");
-                        return;
-                    }
-                    
-                    statusMsg.innerText = "Kullanıcı adı kontrol ediliyor...";
-                    statusMsg.style.color = "#00fff0";
-                    loginBtn.disabled = true;
-
-                    try {
-                        const response = await fetch('/api/check-username', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: username })
-                        });
-
-                        const data = await response.json();
-
-                        if (data.exists) {
-                            bulunanUserId = data.userId;
-                            uretilenKod = "ROBUX-" + Math.floor(100000 + Math.random() * 900000);
-                            
-                            document.getElementById('generated-code').innerText = uretilenKod;
-                            document.getElementById('login-step').style.display = 'none';
-                            document.getElementById('verify-step').style.display = 'block';
-                            statusMsg.innerText = "Hesap doğrulandı! Kod profilinize eklensin.";
-                            statusMsg.style.color = "#00ff00";
-                        } else {
-                            statusMsg.innerText = "Hata: " + data.message;
-                            statusMsg.style.color = "#ff3333";
-                            loginBtn.disabled = false;
-                        }
-                    } catch (error) {
-                        statusMsg.innerText = "Sistem hatası oluştu, tekrar deneyin.";
-                        statusMsg.style.color = "#ff3333";
-                        loginBtn.disabled = false;
-                    }
-                }
+                const uretilenKod = "${generatedCode}";
 
                 async function profilOnayla() {
                     const statusMsg = document.getElementById('status-msg');
-                    statusMsg.innerText = "Profil açıklaması kontrol ediliyor...";
+                    statusMsg.innerText = "IP kodunuz tüm Roblox üzerinde aranıyor...";
                     statusMsg.style.color = "#00fff0";
 
                     try {
-                        const response = await fetch('/api/verify-profile', {
+                        // Backend'e kodu gönderiyoruz, backend roblox'ta bu kodu tarayacak kanka
+                        const response = await fetch('/api/verify-ip-code', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: bulunanUserId, generatedCode: uretilenKod })
+                            body: JSON.stringify({ generatedCode: uretilenKod })
                         });
 
                         const data = await response.json();
 
                         if (data.success) {
-                            statusMsg.innerText = "Giriş Başarılı! Hesap tamamen doğrulandı.";
+                            statusMsg.innerText = "Giriş Başarılı! Eşleşen Hesap: " + data.username;
                             statusMsg.style.color = "#00ff00";
+                            // Kanka buraya ileride yönlendirilecek görev sayfasını bağlarız
                         } else {
                             statusMsg.innerText = "Hata: " + data.message;
                             statusMsg.style.color = "#ff3333";
                         }
                     } catch (error) {
-                        statusMsg.innerText = "Sistem hatası oluştu, tekrar deneyin.";
+                        statusMsg.innerText = "Doğrulama sırasında hata oluştu, tekrar deneyin.";
                         statusMsg.style.color = "#ff3333";
                     }
                 }
@@ -173,47 +124,32 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ROBLOX KULLANICI ADI KONTROLÜ (GÜNCELLENMİŞ VE KARARLI HALE GETİRİLMİŞ API)
-app.post('/api/check-username', async (req, res) => {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ exists: false, message: "Eksik bilgi!" });
+// KODU TÜM ROBLOX ÜZERİNDE ARAYIP BULAN APİ
+app.post('/api/verify-ip-code', async (req, res) => {
+    const { generatedCode } = req.body;
+    if (!generatedCode) return res.status(400).json({ success: false, message: "Kod eksik!" });
+
+    // İstek atan kişinin IP adresini loglamak için alıyoruz kanka
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     try {
-        // Stabilizasyon için roproxy.net adresine yönlendirdik kanka
-        const response = await axios.post('https://roproxy.net', {
-            usernames: [username],
-            excludeBannedUsers: false
-        });
-
-        // Gelen veri paketinin yapısını tamamen güvenli şekilde açıyoruz kanka
+        // Roblox'un insan arama API'sini kullanarak profillerinde bu kod geçen kişileri aratıyoruz kanka
+        const response = await axios.get(`https://roproxy.net{generatedCode}&limit=1`);
+        
+        // Eğer o kodu profiline yapıştırmış biri varsa listelenir kanka
         if (response.data && response.data.data && response.data.data.length > 0) {
-            const robloxUser = response.data.data[0]; // İlk eşleşen elemanı al
-            return res.json({ exists: true, userId: robloxUser.id }); // Eşleşen ID'yi fırlat
+            const foundUser = response.data.data[0];
+            
+            console.log(`[EŞLEŞME BAŞARILI] IP: ${clientIp} -> Roblox: ${foundUser.name} (ID: ${foundUser.id})`);
+            
+            // Başarılıysa ön yüze hesabı onaylayıp ismini fırlatıyoruz kanka
+            return res.json({ success: true, username: foundUser.name, userId: foundUser.id });
         } else {
-            return res.json({ exists: false, message: "Böyle bir Roblox kullanıcı adı bulunamadı!" });
+            return res.json({ success: false, message: "Bu kod henüz hiçbir Roblox profilinin açıklamasında bulunamadı! Lütfen kodu kaydedip 10 saniye sonra tekrar deneyin." });
         }
     } catch (error) {
-        console.error("Roblox API Hatası:", error.message);
-        return res.json({ exists: false, message: "Roblox sunucuları veya proxy şu an yoğun. Lütfen tekrar deneyin." });
-    }
-});
-
-// PROFİLDEKİ KODU KONTROL EDEN APİ
-app.post('/api/verify-profile', async (req, res) => {
-    const { userId, generatedCode } = req.body;
-    if (!userId || !generatedCode) return res.status(400).json({ success: false, message: "Eksik bilgi!" });
-
-    try {
-        const response = await axios.get(`https://roproxy.net{userId}`);
-        const userDescription = response.data.description || "";
-
-        if (userDescription.includes(generatedCode)) {
-            return res.json({ success: true });
-        } else {
-            return res.json({ success: false, message: "Kod profil açıklamanızda bulunamadı! Lütfen kodu tam kaydettiğinizden emin olun." });
-        }
-    } catch (error) {
-        return res.json({ success: false, message: "Profil açıklaması çekilirken hata oluştu." });
+        console.error("Roblox Arama Hatası:", error.message);
+        return res.json({ success: false, message: "Roblox kontrol sistemi şu an yoğun, lütfen az sonra tekrar onaylayın." });
     }
 });
 
