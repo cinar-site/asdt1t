@@ -79,7 +79,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. ADIM: REKLAM GÖREVLERİNİN YÜKLENECEĞİ SAYFA (DASHBOARD)
+// 2. ADIM: GERÇEK CANLI GÖREV SAYFASI (DASHBOARD)
 app.get('/dashboard', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -91,11 +91,10 @@ app.get('/dashboard', (req, res) => {
             <link rel="icon" type="image/x-icon" href="/icon.ico">
             <style>
                 body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
-                .container { background-color: #161623; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 650px; }
+                .container { background-color: #161623; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 650px; }
                 h2 { color: #00fff0; margin: 0 0 10px 0; }
-                .balance-box { background: #22223b; padding: 15px; border-radius: 10px; font-size: 22px; font-weight: bold; color: #00ff00; margin: 15px 0; border: 1px solid #00ff00; }
-                .iframe-container { background: white; border-radius: 10px; overflow: hidden; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: none; }
-                .pending-box { background: #2e2e4f; padding: 30px; border-radius: 10px; margin-top: 20px; border: 2px dashed #ff007f; font-weight: bold; color: #ff007f; }
+                .balance-box { background: #22223b; padding: 12px; border-radius: 10px; font-size: 22px; font-weight: bold; color: #00ff00; margin: 15px 0; border: 1px solid #00ff00; }
+                .iframe-container { background: #fff; border-radius: 10px; overflow: hidden; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
                 .logout-btn { background: #ff3333; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px; font-weight: bold; }
             </style>
             <script>
@@ -107,17 +106,9 @@ app.get('/dashboard', (req, res) => {
                 <h2>Hoş Geldin, <span id="user-display" style="color: #00fff0;">Oyuncu</span>! 👋</h2>
                 <div class="balance-box">Bakiyeniz: <span id="balance-display">0</span> ROBUX 💰</div>
 
-                <!-- ONAY BEKLERKEN GÖZÜKEN GEÇİCİ KUTU -->
-                <div id="pending-msg" class="pending-box">
-                    📢 GÖREV SİTEMİ MONLIX TARAFINDAN ONAYLIYOR!
-                    <p style="font-size: 14px; color: #ccc; font-weight: normal; margin-top: 10px;">
-                        Monlix ekibi sitemizi birkaç saat içinde onayladığında, sana vereceğim linki buraya yapıştıracağız ve gerçek görev havuzu otomatik olarak burada belirecek kanka!
-                    </p>
-                </div>
-
-                <!-- 🔥 MONLIX ONAYLANINCA OTOMATİK DEVREYE GİRECEK GÖREV DUVARI 🔥 -->
-                <div id="wall-container" class="iframe-container">
-                    <iframe id="monlix-frame" src="" style="width:100%; height:600px; border:none;"></iframe>
+                <!-- 🔥 CPALEAD GERÇEK GÖREV DUVARI BURADA CANLANIYOR KANKA 🔥 -->
+                <div class="iframe-container">
+                    <iframe id="cpalead-frame" src="" style="width:100%; height:690px; border:none;" frameborder="0" referrerpolicy="no-referrer" sandbox="allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox"></iframe>
                 </div>
 
                 <button class="logout-btn" onclick="cikisYap()">Oturumu Kapat</button>
@@ -127,16 +118,10 @@ app.get('/dashboard', (req, res) => {
                 const session = JSON.parse(localStorage.getItem('roblox_session'));
                 if (session) {
                     document.getElementById('user-display').innerText = session.username;
-
-                    // 💡 BURAYA MONLIX ONAY MAİLİNDEKİ SANA VERİLEN GÖREV LİNKİNİ YAPIŞTIRACAKSIN kanka!
-                    // Link gelene kadar bu alt satır boş kalacak:
-                    const monlixUrl = ""; 
-
-                    if (monlixUrl !== "") {
-                        document.getElementById('pending-msg').style.display = 'none';
-                        document.getElementById('wall-container').style.display = 'block';
-                        document.getElementById('monlix-frame').src = monlixUrl + "?userId=" + session.userId;
-                    }
+                    
+                    // CPALead'den aldığın o efsane linki buraya entegre ettik kanka
+                    const targetLink = "https://mobilerewards.link/wall/4byS";
+                    document.getElementById('cpalead-frame').src = targetLink + "?subid=" + session.userId;
                 }
                 function cikisYap() { localStorage.removeItem('roblox_session'); window.location.href = '/'; }
             </script>
@@ -156,10 +141,11 @@ app.post('/api/hybrid-verify', async (req, res) => {
             return res.json({ success: false, message: "Böyle bir kullanıcı bulunamadı!" });
         }
         const robloxUserId = thumbRes.data.data.targetId;
+        console.log(`[GİRİŞ BAŞARILI] Kullanıcı: ${username} | ID: ${robloxUserId} | IP: ${clientIp}`);
         return res.json({ success: true, userId: robloxUserId });
     } catch (error) {
         return res.json({ success: true, userId: 12345 });
     }
 });
 
-app.listen(PORT, () => { console.log(`Sunucu ${PORT} portunda aktif.`); });
+app.listen(PORT, () => { console.log(`Sunucu ${PORT} portunda canavar gibi çalışıyor.`); });
