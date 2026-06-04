@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kankamın Yapay Zekası</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .chat-container { width: 400px; height: 500px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        .chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 10px; border-radius: 8px; max-width: 75%; word-wrap: break-word; font-size: 14px; line-height: 1.4; }
+        .user { background: #007bff; color: white; align-self: flex-end; }
+        .ai { background: #e4e6eb; color: black; align-self: flex-start; }
+        .input-area { display: flex; border-top: 1px solid #ddd; padding: 10px; background: #fff; }
+        .input-area input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+        .input-area button { background: #007bff; color: white; border: none; padding: 10px 15px; margin-left: 5px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">Kankamın Canlı AI Sitesi</div>
+    <div class="chat-box" id="chatBox">
+        <div class="message ai">Sitemiz Render üzerinde tamamen canlı kanka! Artık her yerden konuşabiliriz. 🚀</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Bir şeyler yaz kanka..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Gönder</button>
+    </div>
+</div>
+
+<script>
+    async function sendMessage() {
+        const inputField = document.getElementById("userInput");
+        const userText = inputField.value.trim();
+        if (!userText) return;
+
+        appendMessage(userText, "user");
+        inputField.value = "";
+
+        const botMessageDiv = appendMessage("Düşünüyorum kanka...", "ai");
+
+        try {
+            // Kendi sunucumuzun endpoint'ine istek atıyoruz
+            const response = await fetch('/chat', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: userText })
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                botMessageDiv.innerText = `Hata: ${data.error.message}`;
+                return;
+            }
+
+            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                botMessageDiv.innerText = data.candidates[0].content.parts[0].text;
+            } else {
+                botMessageDiv.innerText = "Yapay zekadan boş yanıt döndü kanka.";
+            }
+
+        } catch (error) {
+            botMessageDiv.innerText = "Sunucu bağlantısında bir sorun oldu kanka.";
+            console.error(error);
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === "Enter") sendMessage();
+    }
+
+    function appendMessage(text, sender) {
+        const chatBox = document.getElementById("chatBox");
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", sender);
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return msgDiv;
+    }
+</script>
+</body>
+</html>
