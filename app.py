@@ -20,31 +20,48 @@ def chat():
             return jsonify({"error": {"message": "Mesaj bos olamaz kanka."}}), 400
 
         user_text = data.get("text")
-        url = "https://googleapis.com"
+        
+        # URL YAPISI DÜZELTİLDİ: 404 hatasını önleyen en kararlı saf endpoint yapısı
+        url = f"https://googleapis.com{API_KEY}"
         
         headers = {
-            "Content-Type": "application/json",
-            "x-goog-api-key": API_KEY
+            "Content-Type": "application/json"
         }
         
+        # İstek gövdesini oluşturup Google'a gönderiyoruz
         response = requests.post(url, headers=headers, json={
             "contents": [{"parts": [{"text": user_text}]}]
         })
         
-        # Google hata döndürdüyse JSON parse etmeden yakala
+        # Eğer hâlâ Google tarafında bir sorun varsa bunu şeffafça görelim
         if response.status_code != 200:
-            return jsonify({"error": {"message": f"Google baglantiyi reddetti. Durum kodu: {response.status_code}"}}), response.status_code
+            return jsonify({
+                "error": {
+                    "message": f"Google baglantiyi reddetti. Durum kodu: {response.status_code}",
+                    "details": response.text
+                }
+            }), response.status_code
 
         res_json = response.json()
         
-        # PYTHON İÇİN DOĞRU LİSTE AYRIŞTIRMASI (Hatanın tam çözümü):
+        # Gelen veriyi hatasız ayrıştıran Python haritalama katmanı
         if "candidates" in res_json and len(res_json["candidates"]) > 0:
-            candidate = res_json["candidates"][0]
-            if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
-                ai_text = candidate["content"]["parts"][0]["text"]
-                return jsonify({"candidates": {"content": {"parts": {"text": ai_text}}}})
+            first_candidate = res_json["candidates"][0]
+            if "content" in first_candidate and "parts" in first_candidate["content"] and len(first_candidate["content"]["parts"]) > 0:
+                ai_text = first_candidate["content"]["parts"][0]["text"]
+                
+                # Ön yüzün (index.html) tam olarak beklediği veri formatına dönüştürüyoruz
+                return jsonify({
+                    "candidates": {
+                        "content": {
+                            "parts": {
+                                "text": ai_text
+                            }
+                        }
+                    }
+                })
         
-        return jsonify({"error": {"message": "Google'dan gecersiz veri yapisi geldi."}}), 500
+        return jsonify({"error": {"message": "Google'dan gecersiz veri yapisi geldi kanka."}}), 500
         
     except Exception as e:
         return jsonify({"error": {"message": f"Sunucu hatasi: {str(e)}"}}), 500
