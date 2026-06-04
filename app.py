@@ -6,8 +6,6 @@ from flask_cors import CORS
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
-API_KEY = "AQ.Ab8RN6KekG8Jxv8dhE_sj_Q-RYohgm0byIwcP8U0dzCMXim4qQ"
-
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
@@ -21,50 +19,40 @@ def chat():
 
         user_text = data.get("text")
         
-        # URL YAPISI DÜZELTİLDİ: 404 hatasını önleyen en kararlı saf endpoint yapısı
-        url = f"https://googleapis.com{API_KEY}"
+        # HUGGING FACE API: Hiçbir anahtar istemeyen, doğrudan çalışan açık kaynaklı yapay zeka adresi
+        url = "https://huggingface.co"
         
-        headers = {
-            "Content-Type": "application/json"
-        }
+        # İstek gövdesini hazırlıyoruz
+        payload = {"inputs": user_text}
         
-        # İstek gövdesini oluşturup Google'a gönderiyoruz
-        response = requests.post(url, headers=headers, json={
-            "contents": [{"parts": [{"text": user_text}]}]
-        })
+        response = requests.post(url, json=payload)
         
-        # Eğer hâlâ Google tarafında bir sorun varsa bunu şeffafça görelim
         if response.status_code != 200:
-            return jsonify({
-                "error": {
-                    "message": f"Google baglantiyi reddetti. Durum kodu: {response.status_code}",
-                    "details": response.text
-                }
-            }), response.status_code
+            return jsonify({"error": {"message": f"Yapay zeka sunucusu meşgul. Durum kodu: {response.status_code}"}}), response.status_code
 
         res_json = response.json()
         
-        # Gelen veriyi hatasız ayrıştıran Python haritalama katmanı
-        if "candidates" in res_json and len(res_json["candidates"]) > 0:
-            first_candidate = res_json["candidates"][0]
-            if "content" in first_candidate and "parts" in first_candidate["content"] and len(first_candidate["content"]["parts"]) > 0:
-                ai_text = first_candidate["content"]["parts"][0]["text"]
-                
-                # Ön yüzün (index.html) tam olarak beklediği veri formatına dönüştürüyoruz
-                return jsonify({
-                    "candidates": {
-                        "content": {
-                            "parts": {
-                                "text": ai_text
-                            }
-                        }
+        # Gelen veriyi güvenli bir şekilde ayrıştırıp ön yüzün (index.html) formatına uyduruyoruz
+        if isinstance(res_json, list) and len(res_json) > 0 and "generated_text" in res_json[0]:
+            ai_text = res_json[0]["generated_text"]
+        elif "generated_text" in res_json:
+            ai_text = res_json["generated_text"]
+        else:
+            ai_text = "Ne dediğini tam anlayamadım kanka, tekrar yazar mısın?"
+
+        # Ön yüzün (index.html) çökmemesi için aynı veri yapısını taklit ediyoruz
+        return jsonify({
+            "candidates": {
+                "content": {
+                    "parts": {
+                        "text": ai_text
                     }
-                })
-        
-        return jsonify({"error": {"message": "Google'dan gecersiz veri yapisi geldi kanka."}}), 500
+                }
+            }
+        })
         
     except Exception as e:
-        return jsonify({"error": {"message": f"Sunucu hatasi: {str(e)}"}}), 500
+        return jsonify({"error": {"message": f"Sunucu hatası: {str(e)}"}}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
