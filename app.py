@@ -1,10 +1,21 @@
 import os
-import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder='.')
-CORS(app)
+CORS(app) # Tüm tarayıcı engellerini kaldırır
+
+# Kendi yapay zekanın kelime dağarcığı ve mantık motoru
+# Burayı istediğin kadar soru-cevap ekleyerek büyütebilirsin kanka!
+AI_HAFIZA = {
+    "selam": "Selam kanka naber! Sonunda tüm engelleri yıktık ve sitemiz açıldı. 😎",
+    "naber": "İyidir kanka bomba gibiyim, senden naber? Kodlamaya devam!",
+    "kimsin": "Ben senin Render üzerinde sıfırdan kurduğun yerel yapay zeka asistanınım!",
+    "kod": "HTML, CSS ve Flask (Python) kullanarak harika bir mimari kurdun kanka.",
+    "nasılsın": "Kendi sunucumda tıkır tıkır çalıştığım için çok mutluyum kanka, sen nasılsın?",
+    "eyvallah": "Ne demek kanka, lafı bile olmaz!",
+    "sa": "Aleyküm selam kanka, hoş geldin!"
+}
 
 @app.route('/')
 def index():
@@ -15,37 +26,25 @@ def chat():
     try:
         data = request.get_json()
         if not data or "text" not in data:
-            return jsonify({"error": {"message": "Mesaj bos olamaz kanka."}}), 400
+            return jsonify({"error": {"message": "Mesaj boş olamaz kanka."}}), 400
 
-        user_text = data.get("text")
+        # Kullanıcının yazdığı yazıyı küçük harfe çevirip temizliyoruz
+        user_text = data.get("text").strip().lower()
         
-        # HUGGING FACE API: Hiçbir anahtar istemeyen, doğrudan çalışan açık kaynaklı yapay zeka adresi
-        url = "https://huggingface.co"
+        # Yapay zekanın eşleşme arama algoritması
+        ai_response = "Bu kelimeyi henüz hafızama eklemedin kanka. Ama sistemimiz sıfır hatayla çalışıyor! 🚀"
         
-        # İstek gövdesini hazırlıyoruz
-        payload = {"inputs": user_text}
-        
-        response = requests.post(url, json=payload)
-        
-        if response.status_code != 200:
-            return jsonify({"error": {"message": f"Yapay zeka sunucusu meşgul. Durum kodu: {response.status_code}"}}), response.status_code
+        for anahtar, cevap in AI_HAFIZA.items():
+            if anahtar in user_text:
+                ai_response = cevap
+                break
 
-        res_json = response.json()
-        
-        # Gelen veriyi güvenli bir şekilde ayrıştırıp ön yüzün (index.html) formatına uyduruyoruz
-        if isinstance(res_json, list) and len(res_json) > 0 and "generated_text" in res_json[0]:
-            ai_text = res_json[0]["generated_text"]
-        elif "generated_text" in res_json:
-            ai_text = res_json["generated_text"]
-        else:
-            ai_text = "Ne dediğini tam anlayamadım kanka, tekrar yazar mısın?"
-
-        # Ön yüzün (index.html) çökmemesi için aynı veri yapısını taklit ediyoruz
+        # Ön yüzün (index.html) çökmeden okuyabilmesi için orijinal Gemini veri yapısını taklit ediyoruz
         return jsonify({
             "candidates": {
                 "content": {
                     "parts": {
-                        "text": ai_text
+                        "text": ai_response
                     }
                 }
             }
