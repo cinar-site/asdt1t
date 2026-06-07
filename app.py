@@ -1,58 +1,56 @@
-import os
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+import smtplib
+from email.mime.text import MIMEText
+import random
+import os
 
-app = Flask(__name__, static_folder='.')
-CORS(app) # Tüm tarayıcı engellerini kaldırır
+app = Flask(__name__)
+CORS(app)  # Tarayıcı CORS engellerini tamamen kaldırır
 
-# Kendi yapay zekanın kelime dağarcığı ve mantık motoru
-# Burayı istediğin kadar soru-cevap ekleyerek büyütebilirsin kanka!
-AI_HAFIZA = {
-    "selam": "Selam kanka naber! Sonunda tüm engelleri yıktık ve sitemiz açıldı. 😎",
-    "naber": "İyidir kanka bomba gibiyim, senden naber? Kodlamaya devam!",
-    "kimsin": "Ben senin Render üzerinde sıfırdan kurduğun yerel yapay zeka asistanınım!",
-    "kod": "HTML, CSS ve Flask (Python) kullanarak harika bir mimari kurdun kanka.",
-    "nasılsın": "Kendi sunucumda tıkır tıkır çalıştığım için çok mutluyum kanka, sen nasılsın?",
-    "eyvallah": "Ne demek kanka, lafı bile olmaz!",
-    "sa": "Aleyküm selam kanka, hoş geldin!"
-}
+verification_codes = {}
 
-@app.route('/')
-def index():
-    return send_from_directory('.', 'index.html')
+@app.route('/send-code', methods=['POST'])
+def send_code():
+    data = request.json
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'E-posta gerekli.'}), 400
 
-@app.route('/chat', methods=['POST'])
-def chat():
+    # 6 haneli kod üret
+    code = str(random.randint(100000, 999999))
+    verification_codes[email] = code
+
+    # Gmail SMTP ayarları
+    sender_email = "cinareymenozcelik6@gmail.com"
+    sender_password = "wjsj qlbp agyl dhkk"
+
+    msg = MIMEText(f"Sisteme giriş için doğrulama kodunuz: {code}")
+    msg['Subject'] = 'Doğrulama Kodunuz'
+    msg['From'] = sender_email
+    msg['To'] = email
+
     try:
-        data = request.get_json()
-        if not data or "text" not in data:
-            return jsonify({"error": {"message": "Mesaj boş olamaz kanka."}}), 400
-
-        # Kullanıcının yazdığı yazıyı küçük harfe çevirip temizliyoruz
-        user_text = data.get("text").strip().lower()
-        
-        # Yapay zekanın eşleşme arama algoritması
-        ai_response = "Bu kelimeyi henüz hafızama eklemedin kanka. Ama sistemimiz sıfır hatayla çalışıyor! 🚀"
-        
-        for anahtar, cevap in AI_HAFIZA.items():
-            if anahtar in user_text:
-                ai_response = cevap
-                break
-
-        # Ön yüzün (index.html) çökmeden okuyabilmesi için orijinal Gemini veri yapısını taklit ediyoruz
-        return jsonify({
-            "candidates": {
-                "content": {
-                    "parts": {
-                        "text": ai_response
-                    }
-                }
-            }
-        })
-        
+        with smtplib.SMTP_SSL('://gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, email, msg.as_string())
+        return jsonify({'message': 'Kod gönderildi.'}), 200
     except Exception as e:
-        return jsonify({"error": {"message": f"Sunucu hatası: {str(e)}"}}), 500
+        print(e)
+        return jsonify({'error': 'E-posta gönderilemedi.'}), 500
+
+@app.route('/verify-code', methods=['POST'])
+def verify_code():
+    data = request.json
+    email = data.get('email')
+    code = data.get('code')
+
+    if email in verification_codes and verification_codes[email] == code:
+        del verification_codes[email]
+        return jsonify({'success': True}), 200
+    
+    return jsonify({'error': 'Hatalı veya süresi dolmuş kod.'}), 400
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)

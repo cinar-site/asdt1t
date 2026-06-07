@@ -3,83 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kankamın Yapay Zekası</title>
+    <title>E-posta Doğrulama</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .chat-container { width: 400px; height: 500px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
-        .chat-header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; }
-        .chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .message { padding: 10px; border-radius: 8px; max-width: 75%; word-wrap: break-word; font-size: 14px; line-height: 1.4; }
-        .user { background: #007bff; color: white; align-self: flex-end; }
-        .ai { background: #e4e6eb; color: black; align-self: flex-start; }
-        .input-area { display: flex; border-top: 1px solid #ddd; padding: 10px; background: #fff; }
-        .input-area input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
-        .input-area button { background: #007bff; color: white; border: none; padding: 10px 15px; margin-left: 5px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        .msg { margin-top: 15px; font-weight: bold; color: #28a745; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="chat-header">Kankamın Canlı AI Sitesi</div>
-    <div class="chat-box" id="chatBox">
-        <div class="message ai">Sitemiz Render üzerinde tamamen canlı kanka! Artık her yerden konuşabiliriz. 🚀</div>
+<div class="card">
+    <h2>E-posta Doğrulama</h2>
+    
+    <div id="step1">
+        <p>6 haneli kod almak için e-posta adresinizi girin.</p>
+        <input type="email" id="emailInput" placeholder="ornek@gmail.com" required>
+        <button onclick="sendCode()">Kod Gönder</button>
     </div>
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Bir şeyler yaz kanka..." onkeypress="handleKeyPress(event)">
-        <button onclick="sendMessage()">Gönder</button>
+
+    <div id="step2" class="hidden">
+        <p>E-postanıza gelen 6 haneli kodu girin.</p>
+        <input type="text" id="codeInput" placeholder="------" maxlength="6">
+        <button onclick="verifyCode()">Kodu Doğrula</button>
     </div>
+
+    <div id="message" class="msg"></div>
 </div>
 
 <script>
-    async function sendMessage() {
-        const inputField = document.getElementById("userInput");
-        const userText = inputField.value.trim();
-        if (!userText) return;
+    // BURAYA RENDER'IN SANA VERDİĞİ LİNKİ YAPIŞTIR kanka
+    const serverUrl = 'https://onrender.com'; 
+    let userEmail = '';
 
-        appendMessage(userText, "user");
-        inputField.value = "";
+    async function sendCode() {
+        userEmail = document.getElementById('emailInput').value;
+        if(!userEmail) return alert('Lütfen e-posta girin!');
 
-        const botMessageDiv = appendMessage("Düşünüyorum kanka...", "ai");
+        document.getElementById('message').innerText = 'Kod gönderiliyor...';
 
-        try {
-            // Kendi sunucumuzun endpoint'ine istek atıyoruz
-            const response = await fetch('/chat', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: userText })
-            });
-
-            const data = await response.json();
-            
-            if (data.error) {
-                botMessageDiv.innerText = `Hata: ${data.error.message}`;
-                return;
-            }
-
-            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                botMessageDiv.innerText = data.candidates[0].content.parts[0].text;
-            } else {
-                botMessageDiv.innerText = "Yapay zekadan boş yanıt döndü kanka.";
-            }
-
-        } catch (error) {
-            botMessageDiv.innerText = "Sunucu bağlantısında bir sorun oldu kanka.";
-            console.error(error);
+        const res = await fetch(`${serverUrl}/send-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail })
+        });
+        const data = await res.json();
+        
+        if(res.ok) {
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+            document.getElementById('message').innerText = 'Kod başarıyla gönderildi!';
+        } else {
+            alert(data.error || 'Bir hata oluştu.');
         }
     }
 
-    function handleKeyPress(event) {
-        if (event.key === "Enter") sendMessage();
-    }
+    async function verifyCode() {
+        const code = document.getElementById('codeInput').value;
+        if(code.length !== 6) return alert('Kod 6 haneli olmalıdır!');
 
-    function appendMessage(text, sender) {
-        const chatBox = document.getElementById("chatBox");
-        const msgDiv = document.createElement("div");
-        msgDiv.classList.add("message", sender);
-        msgDiv.innerText = text;
-        chatBox.appendChild(msgDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-        return msgDiv;
+        const res = await fetch(`${serverUrl}/verify-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail, code: code })
+        });
+        const data = await res.json();
+
+        if(res.ok) {
+            document.getElementById('message').innerText = 'Giriş Başarılı! E-posta doğrulandı.';
+            document.getElementById('message').style.color = '#28a745';
+        } else {
+            document.getElementById('message').innerText = 'Hatalı veya süresi dolmuş kod!';
+            document.getElementById('message').style.color = '#dc3545';
+        }
     }
 </script>
 </body>
